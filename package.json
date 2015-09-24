@@ -1,0 +1,28 @@
+{
+  "name": "ns-unite",
+  "version": "0.0.1",
+  "description": "Interaction module for messaging between servers.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "David Jackson <davidjackson123@gmail.com> (http://www.iamdavidjackson.com)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamdavidjackson/ns-unite.git"
+  },
+  "dependencies": {
+    "bluebird": "^2.10.1",
+    "nssocket": "^0.5.3"
+  },
+  "keywords": [
+    "nssocket",
+    "socket",
+    "node"
+  ],
+  "bugs": {
+    "url": "https://github.com/iamdavidjackson/ns-unite/issues"
+  },
+  "homepage": "https://github.com/iamdavidjackson/ns-unite#readme"
+}
