@@ -86,7 +86,11 @@ NsuniteServer.prototype.says = function(channel, data) {
 			// the data to them
 			var socketCount = self.channels[channel].length
 			for(var i = 0; i < socketCount; i++) {
-				self.channels[channel][i].send(['serverSays', 'data'], data);
+				try {
+					self.channels[channel][i].send(['serverSays', 'data'], data);
+				} catch (e) {
+					console.log('Something went wrong sending message to socket: ', e);
+				}
 			}
 			return resolve();
 		} else {
