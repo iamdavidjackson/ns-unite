@@ -107,6 +107,8 @@ var NsuniteClient = function(options, channel) {
 	});
 	this.options = options;
 	this.channel = channel;
+	this.port = options.port || 6789;
+	this.host = options.host || '127.0.0.1';
 
 	this.socket.on('start', function () {
 	    console.dir('start');
@@ -117,7 +119,7 @@ NsuniteClient.prototype.createClient = function() {
 	var self = this;
 	return new Promise(function(resolve, reject) {
 		// connect to the socket and send connecting signal
-		self.socket.connect(self.options.port, function() {
+		self.socket.connect(self.port, self.host, function() {
 			console.log('Connected to server');
 			console.log('Joining channel');
 			self.socket.send(['clientSays', 'join'], {channel: self.channel});
