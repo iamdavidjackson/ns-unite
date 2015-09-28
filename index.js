@@ -105,6 +105,10 @@ var NsuniteClient = function(options, channel) {
 	this.socket = nssocket.NsSocket({
 		reconnect: options.reconnect
 	});
+	this.socket.on('error', function(err) {
+		console.log('woops something went wrong: ', err.stack);
+	})
+
 	this.options = options;
 	this.channel = channel;
 	this.port = options.port || 6789;
