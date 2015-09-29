@@ -1,6 +1,6 @@
 {
   "name": "ns-unite",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "description": "Interaction module for messaging between servers.",
   "main": "index.js",
   "scripts": {
@@ -13,8 +13,9 @@
     "url": "git+https://github.com/iamdavidjackson/ns-unite.git"
   },
   "dependencies": {
-    "bluebird": "^2.10.1",
-    "nssocket": "^0.5.3"
+    "eventemitter2": "^0.4.14",
+    "nssocket": "^0.5.3",
+    "util": "^0.10.3"
   },
   "keywords": [
     "nssocket",

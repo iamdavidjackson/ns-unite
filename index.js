@@ -1,80 +1,25 @@
 'use strict';
 
 var nssocket = require('nssocket');
-var Promise = require('bluebird');
+var util = require('util');
+var events2 = require('eventemitter2');
 
-var nsunite = exports;
-
-nsunite.createServer = function(options) {
-
-	// add default options here...
-	return new Promise(function(resolve, reject) {
-		var server = new NsuniteServer(options);
-		server.createServer(options)
-			.then(function() {
-				resolve(server);
-			})
-			.catch(function(e) {
-				reject(e);
-			});
-	});	
-	
-};
-
-nsunite.createClient = function(options, channel) {
-	// add default options here...
-
-	return new Promise(function(resolve, reject) {
-		var client = new NsuniteClient(options, channel);
-		client.createClient()
-			.then(function() {
-				resolve(client);
-			})
-			.catch(function(e) {
-				reject(e);
-			});
-	});	
-};
-
-var NsuniteServer = function(options) {
+var NsuniteServer = exports.Server = function(options) {
 	this.options = options;
 	this.channels = {};
 };
 
-NsuniteServer.prototype.createServer = function() {
+util.inherits(NsuniteServer, events2.EventEmitter2);
+
+
+NsuniteServer.prototype.start = function() {
 	var self = this;
-	return new Promise(function(resolve, reject) {
-		try {
-			self.server = nssocket.createServer(function(socket) {
-				console.log('new socket connection');
-				
-				// set up listeners
-				socket.data(['clientSays', 'join'], function(data) {
-					console.log('received join request');
-					// if the channel doesn't exist yet then we should
-					if(typeof self.channels[data.channel] === 'undefined') {
-						self.channels[data.channel] = [];
-					}
-
-					self.channels[data.channel].push(socket);
-				});
-
-				socket.data(['clientSays', 'data'], function(data) {
-					console.log(data.channel, ' channel received data: ', data.data);
-					console.log('rebroadcasting the message');
-					self.says(data.channel, data.data)
-						.then(function() {
-							console.log('completed rebroadcasting the message');
-						});
-				});
-
-			}).listen(self.options.port);
-		} catch (e) {
-			return reject(e);
-		}
-		console.log('server ready');
-		return resolve();
-	});
+	try {
+		this.server = nssocket.createServer(self.onNewSocket.bind(self)).listen(self.options.port);
+	} catch (e) {
+		throw e;
+	}
+	this.emit('ready');
 };
 
 NsuniteServer.prototype.says = function(channel, data) {
@@ -100,14 +45,46 @@ NsuniteServer.prototype.says = function(channel, data) {
 	});
 };
 
-var NsuniteClient = function(options, channel) {
+NsuniteServer.prototype.onNewSocket = function (socket) {
+	var self = this;
+	this.emit('newSocket', socket);
+	
+	// set up listeners
+	socket.data(['clientSays', 'join'], function(data) {
+		self.onJoin.apply(self, [data, socket])
+	});
+	socket.data(['clientSays', 'data'], this.onClientSays.bind(this));
+
+};
+
+NsuniteServer.prototype.onJoin = function (data, socket) {
+	this.emit('join', data, socket);
+
+	// if the channel doesn't exist yet then we should
+	if(typeof this.channels[data.channel] === 'undefined') {
+		this.channels[data.channel] = [];
+	}
+
+	this.channels[data.channel].push(socket);
+	
+};
+
+NsuniteServer.prototype.onClientSays = function (data) {
+	this.emit('clientSays', data);
+	
+	this.says(data.channel, data.data)
+		.then(function() {
+			console.log('completed rebroadcasting the message');
+		});
+};
+
+
+var NsuniteClient = exports.Client = function(options, channel) {
+	var self = this;
 
 	this.socket = nssocket.NsSocket({
 		reconnect: options.reconnect
 	});
-	this.socket.on('error', function(err) {
-		console.log('woops something went wrong: ', err.stack);
-	})
 
 	this.options = options;
 	this.channel = channel;
@@ -115,41 +92,42 @@ var NsuniteClient = function(options, channel) {
 	this.host = options.host || '127.0.0.1';
 
 	this.socket.on('start', function () {
-	    console.dir('start');
+	    self.emit('start');
+	});
+
+	this.socket.on('close', function() {
+		self.emit('close');
+	});
+
+	this.socket.on('idle', function() {
+		self.emit('idle');
+	});
+
+	this.socket.on('error', function(err) {
+		self.emit('error', err);
+	});
+
+	this.socket.data(['serverSays', 'data'], function(data) {
+		self.emit('hears', data);
 	});
 };
 
-NsuniteClient.prototype.createClient = function() {
-	var self = this;
-	return new Promise(function(resolve, reject) {
-		// connect to the socket and send connecting signal
-		self.socket.connect(self.port, self.host, function() {
-			console.log('Connected to server');
-			console.log('Joining channel');
-			self.socket.send(['clientSays', 'join'], {channel: self.channel});
-			resolve();
-		});
-	});
-	
-}
+util.inherits(NsuniteClient, events2.EventEmitter2);
+
+NsuniteClient.prototype.connect = function() {
+	// connect to the socket and send connecting signal
+	this.socket.connect(this.port, this.host, this.onConnect.bind(this));
+};
+
+NsuniteClient.prototype.onConnect = function() {
+	this.socket.send(['clientSays', 'join'], {channel: this.channel});
+	this.emit('ready');
+};
 
 NsuniteClient.prototype.says = function(data) {
-	var self = this;
-	return new Promise(function(resolve, reject) {
-		console.log('sending data');
-		self.socket.send(['clientSays', 'data'], {
-			channel: self.channel,
-			data: data
-		});
-		resolve();
-	});
-};
-
-NsuniteClient.prototype.hears = function(cb) {
-	var self = this;
-	return new Promise(function(resolve, reject) {
-		console.log('setting up listener');
-		self.socket.data(['serverSays', 'data'], cb);
-		resolve();
+	console.log('sending data');
+	this.socket.send(['clientSays', 'data'], {
+		channel: this.channel,
+		data: data
 	});
 };
