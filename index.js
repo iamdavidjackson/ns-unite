@@ -14,12 +14,18 @@ util.inherits(NsuniteServer, events2.EventEmitter2);
 
 NsuniteServer.prototype.start = function() {
 	var self = this;
+
 	try {
 		this.server = nssocket.createServer(self.onNewSocket.bind(self)).listen(self.options.port);
 	} catch (e) {
 		throw e;
 	}
-	this.emit('ready');
+	
+	this.server.on('listening', function () {
+	    console.log('Server listening on port: ' self.options.port);
+	    self.emit('ready', self.server);
+	});
+
 };
 
 NsuniteServer.prototype.says = function(channel, data) {
