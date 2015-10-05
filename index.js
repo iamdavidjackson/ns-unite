@@ -22,7 +22,7 @@ NsuniteServer.prototype.start = function() {
 	}
 	
 	this.server.on('listening', function () {
-	    console.log('Server listening on port: ' self.options.port);
+	    console.log('Server listening on port: ' + self.options.port);
 	    self.emit('ready', self.server);
 	});
 
